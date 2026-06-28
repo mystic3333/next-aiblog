@@ -515,7 +515,34 @@ git pull --rebase origin main
 git push
 ```
 
----
+#### 🕳️ Git 代理导致无法连接 GitHub
+
+**问题**：`git push` 报错 `Failed to connect to 127.0.0.1 port 7890: Couldn't connect to server`。
+
+**原因**：之前配置了 Git 全局代理（如 `http.proxy=127.0.0.1:7890`），但代理服务未启动，导致所有 Git 请求被拦截到无效地址。
+
+**解决**：查看并清除代理配置：
+
+```bash
+git config --global --list | grep proxy    # 查看是否有代理
+git config --global --unset http.proxy      # 清除 http 代理
+git config --global --unset https.proxy    # 清除 https 代理
+```
+
+#### 🕳️ 未关联 Git — 使用 Deploy Hook 替代
+
+**问题**：Vercel 项目未关联 Git 仓库，`git push` 后不会自动部署。
+
+**原因**：项目通过手动 `vercel deploy` 或 Dashboard 直接导入创建，未绑定 GitHub。
+
+**解决**：两种方式：
+
+- **推荐：关联 Git 仓库**：Vercel Dashboard → Settings → Git → Connect Git Repository → 选择仓库 → 开启 Auto-Deploy
+- **替代方案：Deploy Hook**：在 Settings → Git → Deploy Hooks 创建 Hook，每次推送后手动触发：
+
+```bash
+curl -X POST https://api.vercel.com/v1/integrations/deploy/xxx/xxx
+```
 
 ###  Next.js
 
