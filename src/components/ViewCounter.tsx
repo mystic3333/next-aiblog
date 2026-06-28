@@ -1,17 +1,30 @@
 "use client"
 
-import { useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useEffect, useState } from "react"
 
 export default function ViewCounter({ slug }: { slug: string }) {
-  const supabase = createClient()
+  const [count, setCount] = useState<number | null>(null)
 
   useEffect(() => {
     const increment = async () => {
-      await supabase.rpc("increment_view", { slug_text: slug })
+      const res = await fetch("/api/views", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setCount(data.count)
+      }
     }
     increment()
   }, [slug])
 
-  return null
+  if (count === null) return null
+
+  return (
+    <span className="text-xs" style={{ color: "var(--muted)" }}>
+      {count} {count === 1 ? "view" : "views"}
+    </span>
+  )
 }

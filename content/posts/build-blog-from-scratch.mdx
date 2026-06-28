@@ -335,19 +335,52 @@ $$ language sql;
 
 ### API Route
 
+提供 `GET` 查询和 `POST` 递增两个端点：
+
 ```ts
+// GET — 查询当前阅读数
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const slug = searchParams.get("slug")
+  const { data } = await supabase
+    .from("views").select("count").eq("slug", slug).single()
+  return Response.json({ count: data?.count ?? 0 })
+}
+
+// POST — 递增并返回新阅读数
 export async function POST(request: NextRequest) {
   const { slug } = await request.json()
-  const supabase = await createClient()
-  await supabase.rpc("increment_view", { slug_param: slug })
-  const { data } = await supabase.from("views").select("count").eq("slug", slug).single()
-  return Response.json({ count: data?.count || 0 })
+  await supabase.rpc("increment_view", { slug_text: slug })
+  const { data } = await supabase
+    .from("views").select("count").eq("slug", slug).single()
+  return Response.json({ count: data?.count ?? 1 })
 }
 ```
 
 ### ViewCounter 组件
 
-每篇文章详情页嵌入，初次渲染时调用 `POST /api/views` 增加计数，再 `GET` 获取当前值。
+每篇文章详情页嵌入，初次渲染时调用 `POST /api/views` 增加计数并显示：
+
+```tsx
+export default function ViewCounter({ slug }: { slug: string }) {
+  const [count, setCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch("/api/views", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug }),
+    })
+      .then((res) => res.json())
+      .then((data) => setCount(data.count))
+  }, [slug])
+
+  if (count === null) return null
+  return <span>{count} views</span>
+}
+```
+
+文章页面将 `ViewCounter` 放在标题区，与日期、标签同行显示。
 
 ---
 

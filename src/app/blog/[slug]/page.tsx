@@ -29,12 +29,11 @@ export default async function BlogPostPage({ params }: Props) {
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-16">
-      <ViewCounter slug={slug} />
-
       <header>
         <h1 className="text-4xl font-bold tracking-tight">{post.title}</h1>
         <div className="mt-4 flex items-center gap-4 text-sm" style={{ color: "var(--muted)" }}>
           <time>{formatDate(post.date)}</time>
+          <ViewCounter slug={slug} />
           {post.tags.length > 0 && (
             <div className="flex gap-2">
               {post.tags.map((tag) => (
