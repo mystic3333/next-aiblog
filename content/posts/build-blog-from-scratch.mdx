@@ -529,6 +529,32 @@ git config --global --unset http.proxy      # 清除 http 代理
 git config --global --unset https.proxy    # 清除 https 代理
 ```
 
+#### 🕳️ 自定义域名配置（Vercel + Cloudflare）
+
+**问题**：想让博客通过自己的域名（如 `jspeng.online`）访问，Vercel + Cloudflare 如何配置。
+
+**Vercel 侧**：
+
+```
+项目 → Settings → Domains → Add Domain
+输入 jspeng.online → 勾选 "Also add www.jspeng.online"
+→ 设置跳转规则（推荐 www 做主域名，apex 跳转到 www）
+```
+
+**Cloudflare 侧**（DNS 记录）：
+
+| 类型 | 名称 | 值 | 代理 |
+|------|------|-----|------|
+| `A` | `@` | `76.76.21.21` | ⚫ DNS only |
+| `CNAME` | `www` | `cname.vercel-dns-0.com` | ⚫ DNS only |
+
+**关键**：两条记录都要点 **灰色云（DNS only）**，不要橙色代理。否则 Vercel 会显示 Invalid Configuration，SSL 证书也可能异常。
+
+若想保留 Cloudflare 加速，需在 Vercel 额外开启：
+```
+Vercel → Settings → Security → Verified Proxy → 启用
+```
+
 #### 🕳️ 未关联 Git — 使用 Deploy Hook 替代
 
 **问题**：Vercel 项目未关联 Git 仓库，`git push` 后不会自动部署。
