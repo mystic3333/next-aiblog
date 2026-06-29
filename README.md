@@ -11,6 +11,7 @@ A personal blog built with **Next.js 16**, **Supabase**, **Three.js**, and **Tai
 - **View Counter** — Track page views via Supabase
 - **Dark Mode** — Toggle between light/dark themes, persisted to localStorage
 - **AI Tools Navigation** — Curated directory of AI tools
+- **SCL-90 Test** — Psychological self-assessment tool (90 questions, 10 dimensions)
 - **Responsive Design** — Mobile-friendly layout
 - **ISR** — On-demand revalidation for updated content
 
@@ -99,6 +100,7 @@ src/
 │   │   ├── page.tsx            # Blog listing grid
 │   │   └── [slug]/page.tsx     # Blog post with MDX + comments
 │   ├── tools/page.tsx          # AI tools navigation
+│   ├── scl-90/page.tsx         # SCL-90 psychological test
 │   ├── auth/callback/route.ts  # GitHub OAuth callback
 │   └── api/
 │       ├── comments/route.ts   # Comment CRUD API
@@ -116,6 +118,8 @@ src/
 │   ├── ToolCard.tsx            # AI tool card
 │   ├── MDXContent.tsx          # MDX renderer
 │   ├── CommentSection.tsx      # Comments list + form
+│   ├── ErrorBoundary.tsx       # Class-based error boundary
+│   ├── SCL90Test.tsx           # SCL-90 test interactive form
 │   └── ViewCounter.tsx         # View tracking (client)
 ├── lib/
 │   ├── supabase/
@@ -126,8 +130,10 @@ src/
 │   ├── posts.ts                # MDX file reader
 │   └── utils.ts                # formatDate, cn helper
 ├── types/index.ts              # TypeScript types
-├── proxy.ts                    # Next.js 16 proxy (session refresh)
-├── data/ai-tools.json          # AI tools data
+├── proxy.ts                    # Next.js 16 proxy (session refresh, not wired)
+├── data/
+│   ├── ai-tools.json           # AI tools data
+│   └── scl-90.ts               # SCL-90 questions and dimensions
 └── content/posts/              # MDX blog posts
 ```
 
@@ -146,6 +152,16 @@ tags: ["nextjs", "react"]
 Your content here with **Markdown** support.
 ```
 
+See `content/posts/` for real examples, including the investment guide series:
+
+| File | Topic |
+|------|-------|
+| `index-investing-guide-01.mdx` | Why index investing beats savings accounts |
+| `index-investing-guide-02.mdx` | NASDAQ 100 — QQQ vs QQQM, how to buy |
+| `index-investing-guide-03.mdx` | S&P 500 — VOO vs SPY vs IVV, combining with NASDAQ |
+| `index-investing-guide-04.mdx` | Bonds — why they protect your behavior, not your returns |
+| `index-investing-guide-05.mdx` | Execution plan — concrete steps from zero to one |
+
 ## Scripts
 
 | Command | Description |
@@ -156,3 +172,19 @@ Your content here with **Markdown** support.
 | `npm run build:clean` | Clear cache and build |
 | `npm start` | Start production server |
 | `npm run lint` | Run ESLint |
+
+## Code Review
+
+AI agent review commands (run via OpenCode or compatible harness):
+
+| Command | Scope | When to Run |
+|---------|-------|-------------|
+| `/react-review` | React hooks, JSX, RSC boundaries, a11y, render perf | After modifying `.tsx`/`.jsx` files |
+| `/code-review` | General uncommitted changes or PR diff | Before any merge |
+| `security-review` | Project-wide security audit (XSS, injection, secrets) | Before deployment |
+
+Review categories: **CRITICAL** (must fix), **HIGH** (should fix), **MEDIUM** (consider).
+
+## Agent Instructions
+
+`AGENTS.md` at the repo root contains guidance for AI coding agents — commands, architecture quirks, Supabase setup, and conventions.

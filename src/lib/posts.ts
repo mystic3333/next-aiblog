@@ -17,27 +17,40 @@ export interface Post extends PostMeta {
   content: string
 }
 
+function findPostFiles(dir: string): string[] {
+  const entries = fs.readdirSync(dir, { withFileTypes: true })
+  const files: string[] = []
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      files.push(...findPostFiles(fullPath))
+    } else if (entry.name.endsWith(".mdx") || entry.name.endsWith(".md")) {
+      files.push(fullPath)
+    }
+  }
+  return files
+}
+
+function readPostMeta(fullPath: string): PostMeta {
+  const source = fs.readFileSync(fullPath, "utf-8")
+  const { data } = matter(source)
+  const slug = path.basename(fullPath).replace(/\.(mdx|md)$/, "")
+  return {
+    slug,
+    title: data.title || slug,
+    description: data.description || "",
+    date: data.date || new Date().toISOString(),
+    tags: data.tags || [],
+    featured: data.featured || false,
+  }
+}
+
 export function getAllPosts(): PostMeta[] {
   if (!fs.existsSync(postsDirectory)) return []
 
-  const fileNames = fs.readdirSync(postsDirectory)
-  const posts = fileNames
-    .filter((fn) => fn.endsWith(".mdx") || fn.endsWith(".md"))
-    .map((fileName) => {
-      const slug = fileName.replace(/\.(mdx|md)$/, "")
-      const fullPath = path.join(postsDirectory, fileName)
-      const source = fs.readFileSync(fullPath, "utf-8")
-      const { data } = matter(source)
-
-      return {
-        slug,
-        title: data.title || slug,
-        description: data.description || "",
-        date: data.date || new Date().toISOString(),
-        tags: data.tags || [],
-        featured: data.featured || false,
-      }
-    })
+  const files = findPostFiles(postsDirectory)
+  const posts = files
+    .map(readPostMeta)
     .sort((a, b) => {
       if (a.featured && !b.featured) return -1
       if (!a.featured && b.featured) return 1
@@ -50,15 +63,13 @@ export function getAllPosts(): PostMeta[] {
 export function getPostBySlug(slug: string): Post | null {
   if (!fs.existsSync(postsDirectory)) return null
 
-  const fileNames = fs.readdirSync(postsDirectory)
-  const fileName = fileNames.find(
-    (fn) => fn.replace(/\.(mdx|md)$/, "") === slug
+  const files = findPostFiles(postsDirectory)
+  const match = files.find(
+    (f) => path.basename(f).replace(/\.(mdx|md)$/, "") === slug
   )
+  if (!match) return null
 
-  if (!fileName) return null
-
-  const fullPath = path.join(postsDirectory, fileName)
-  const source = fs.readFileSync(fullPath, "utf-8")
+  const source = fs.readFileSync(match, "utf-8")
   const { data, content } = matter(source)
 
   return {
