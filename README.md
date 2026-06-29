@@ -6,6 +6,8 @@ A personal blog built with **Next.js 16**, **Supabase**, **Three.js**, and **Tai
 
 - **3D Interactive Background** — Particle field with Three.js + React Three Fiber
 - **MDX Blog Posts** — Write content in Markdown with frontmatter metadata
+- **专栏 Series** — Posts organized into series with dedicated overview pages
+- **Pagination** — Blog listing with page navigation and total count
 - **Supabase Auth** — GitHub OAuth login
 - **Comment System** — Authenticated users can comment on posts
 - **View Counter** — Track page views via Supabase
@@ -97,8 +99,11 @@ src/
 │   ├── not-found.tsx           # 404 page
 │   ├── about/page.tsx          # About page
 │   ├── blog/
-│   │   ├── page.tsx            # Blog listing grid
-│   │   └── [slug]/page.tsx     # Blog post with MDX + comments
+│   │   ├── page.tsx            # Blog listing grid with pagination
+│   │   ├── [slug]/page.tsx     # Blog post with MDX + comments
+│   │   └── series/
+│   │       ├── page.tsx        # Series overview (all columns)
+│   │       └── [slug]/page.tsx # Single series page
 │   ├── tools/page.tsx          # AI tools navigation
 │   ├── scl-90/page.tsx         # SCL-90 psychological test
 │   ├── auth/callback/route.ts  # GitHub OAuth callback
@@ -119,6 +124,7 @@ src/
 │   ├── MDXContent.tsx          # MDX renderer
 │   ├── CommentSection.tsx      # Comments list + form
 │   ├── ErrorBoundary.tsx       # Class-based error boundary
+│   ├── Pagination.tsx          # Page navigation component
 │   ├── SCL90Test.tsx           # SCL-90 test interactive form
 │   └── ViewCounter.tsx         # View tracking (client)
 ├── lib/
@@ -134,7 +140,16 @@ src/
 ├── data/
 │   ├── ai-tools.json           # AI tools data
 │   └── scl-90.ts               # SCL-90 questions and dimensions
-└── content/posts/              # MDX blog posts
+└── content/posts/              # MDX blog posts (supports subdirectories for series)
+    ├── build-blog-from-scratch.mdx
+    ├── career-switch/
+    │   ├── series.json         # Series metadata (name, description)
+    │   ├── career-switch-guide-01-*.mdx
+    │   └── ...
+    └── index-investing/
+        ├── series.json
+        ├── index-investing-guide-01.mdx
+        └── ...
 ```
 
 ## Writing Posts
@@ -152,15 +167,25 @@ tags: ["nextjs", "react"]
 Your content here with **Markdown** support.
 ```
 
-See `content/posts/` for real examples, including the investment guide series:
+### Creating a Series
 
-| File | Topic |
-|------|-------|
-| `index-investing-guide-01.mdx` | Why index investing beats savings accounts |
-| `index-investing-guide-02.mdx` | NASDAQ 100 — QQQ vs QQQM, how to buy |
-| `index-investing-guide-03.mdx` | S&P 500 — VOO vs SPY vs IVV, combining with NASDAQ |
-| `index-investing-guide-04.mdx` | Bonds — why they protect your behavior, not your returns |
-| `index-investing-guide-05.mdx` | Execution plan — concrete steps from zero to one |
+To group posts into a series, create a subdirectory with a `series.json`:
+
+```
+content/posts/my-series/
+├── series.json         # { "name": "...", "description": "..." }
+├── post-01.mdx
+└── post-02.mdx
+```
+
+The series page is auto-generated at `/blog/series/my-series`. Each post card shows its series badge linking to the series page.
+
+### Current Series
+
+| Series | Directory | Posts |
+|--------|-----------|-------|
+| 普通人指数投资指南 | `index-investing/` | 5-part guide from savings to execution |
+| 转行面试指南 | `career-switch/` | 10-part interview prep for career switchers |
 
 ## Scripts
 

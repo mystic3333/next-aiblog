@@ -15,6 +15,15 @@ export default function BlogCard({ post }: { post: PostMeta }) {
               置顶
             </span>
           )}
+          {post.seriesName && (
+            <Link
+              href={`/blog/series/${post.seriesSlug}`}
+              className="rounded bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400 transition-all hover:opacity-70"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {post.seriesName}
+            </Link>
+          )}
           <time className="text-sm" style={{ color: "var(--muted)" }}>
             {formatDate(post.date)}
           </time>
