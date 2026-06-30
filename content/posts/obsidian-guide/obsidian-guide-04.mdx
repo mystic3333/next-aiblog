@@ -1,0 +1,175 @@
+---
+title: "自动化流水线：Templater + Dataview + QuickAdd 深入"
+description: "什么时候该写脚本，什么时候不该写——把机械操作从写作流中剥离"
+date: "2026-06-30"
+tags: ["obsidian", "自动化", "Templater", "Dataview", "QuickAdd", "效率"]
+---
+
+前三篇我们一直在搭结构。这一篇开始让结构自己动。
+
+自动化在 Obsidian 里的正确目标不是「让笔记自己写自己」，那是伪需求。真正的目标是：**把机械操作从写作流中剥离，让你只做判断和表达。**
+
+## 不自动化清单
+
+先讲什么时候不该写自动化——因为大部分 Obsidian 用户犯的错误是在错误的地方追求效率。
+
+以下场景**不要自动化**：
+
+- **内容判断**：不要用脚本自动打标签。标签的价值在于你主动思考后的分类，而不是 NLP 猜出来的。
+- **链接推荐**：不要用插件自动创建双向链接。链接是探索路径，自动生成的链接会在图谱里塞满噪音。
+- **笔记内容总结**：不要自动生成摘要。写摘要本身就是理解过程。
+
+自动化的适用范围只有一条：**确定的、重复的、不涉及判断的机械步骤。**
+
+## 基础：Templater 动态模板
+
+第一层自动化是模板动态化。不是「插入日期」，而是让模板根据上下文自行调整。
+
+**自动识别笔记类型**
+
+在 `.obsidian/templates/` 里建一个入口模板，其他模板被它引用：
+
+```
+---
+<%*
+let type = await tp.system.suggester(
+  ["会议记录", "项目笔记", "读书笔记", "想法", "技术方案"],
+  ["meeting", "project", "book", "idea", "tech-spec"]
+)
+tR += `type: ${type}`
+%>
+created: <% tp.date.now("YYYY-MM-DD HH:mm") %>
+status: seedling
+---
+```
+
+保存时自动调用 QuickAdd，根据 `type` 匹配不同的子模板。所有笔记建好后自动归入对应文件夹。
+
+**自动继承上下文**
+
+在项目笔记中创建子笔记时，自动继承父笔记的标签和项目名称：
+
+```
+---
+project: <%*
+let parent = tp.file.find_tfile(tp.config.activeFile?.basename + ".md")
+let content = await app.vault.read(parent)
+let match = content.match(/project: (.+)/)
+tR += match ? match[1] : "未归类"
+%>
+created: <% tp.date.now("YYYY-MM-DD") %>
+---
+```
+
+效果：在某个项目的会议记录里按快捷键建新笔记，新笔记自动带上该项目标签，不需要手动填。
+
+## 进阶：Dataview 主动查询
+
+Dataview 通常是被动查询（你打开笔记才渲染）。进阶用法是让它主动推送信息到你的工作流里。
+
+**每日站会看板**
+
+每天早上一篇笔记自动列出当天需要关注的所有内容：
+
+```dataview
+TABLE file.cday as 创建日期, deadline
+FROM #project
+WHERE deadline = date(today)
+SORT priority ASC
+```
+
+结合 Templater 每天自动生成一篇（通过 QuickAdd Macro + Calendar 插件触发），你每天早上打开 Obsidian 时它已经准备好了。
+
+**状态迁移追踪**
+
+批处理脚本（通过 Templater + JavaScript）批量修改笔记 frontmatter：
+
+```
+<%*
+const files = app.vault.getMarkdownFiles()
+  .filter(f => f.path.startsWith("1-Projects/"))
+
+for (let f of files) {
+  let content = await app.vault.read(f)
+  if (content.includes("status: active") &&
+      content.includes("// DONE")) {
+    content = content.replace("status: active", "status: completed")
+    await app.vault.modify(f, content)
+  }
+}
+%>
+```
+
+这不是让你每天都跑——而是当你有了 20 个活跃项目后，手动迁移一次。自动化迁移的最优频率是「每月一次」。
+
+## 高阶：QuickAdd Macro 链式操作
+
+Macro 是 QuickAdd 的核心价值——把多个操作串成一个命令。
+
+**创建项目 + 全套文件**
+
+一键生成项目结构。绑定到快捷键 `Cmd+Shift+P`：
+
+```
+Macro: "新建项目"
+├── Capture: 输入项目名称
+├── Templater: 创建项目主笔记（1-Projects/）
+├── Templater: 创建需求文档模板（1-Projects/需求/）
+├── Templater: 创建技术方案模板（1-Projects/技术/）
+├── Templater: 创建会议记录模板（1-Projects/会议/）
+├── Dataview: 更新项目总览索引笔记
+└── 通知: "项目已创建"
+```
+
+整个过程从按快捷键到开始写第一行内容，不超过 5 秒。
+
+**每日笔记归档**
+
+另一个实用 Macro：把昨日笔记从 Inbox 推入 Archive：
+
+```
+Macro: "归档昨日"
+├── Dataview 查询: 找出日期为昨天的 Inbox 笔记
+├── 批量修改 frontmatter: status → archived
+├── 将文件移动到 4-Archive/
+└── 在今日笔记中追加一行: "已归档 N 篇笔记"
+```
+
+## 完整例子：一个读书笔记从捕获到归档的全自动流程
+
+串联所有组件后的真实流程：
+
+**第 1 步：捕获**
+
+QuickAdd Capture 输入书名 → 自动写入 `<书名>.md`，归入 `0-Inbox`
+
+**第 2 步：拆解**
+
+打开 Inbox 里的读书笔记 → Templater 按 `type: book` 自动匹配读书笔记模板 → 生成 frontmatter（标签：`#type/book #topic/PKM`）
+
+**第 3 步：笔记**
+
+阅读时每建一条新想法笔记 → QuickAdd + Templater 自动继承书名标签 → 归入 `3-Resources/`
+
+**第 4 步：汇总**
+
+Dataview 在该书的首页上自动列出所有相关想法笔记：
+
+```dataview
+TABLE file.cday AS 日期
+FROM #topic/PKM
+WHERE project = "反脆弱"
+SORT file.cday ASC
+```
+
+**第 5 步：归档**
+
+读完 → 去 Inbox 检查该书笔记 → 修改 `status: evergreen` → 自动移入 `4-Archive/`
+
+每一步的自动化只做机械搬运，判断留给你。这才是自动化的正确用法。
+
+## 一句话
+
+自动化的目标不是消除手工操作，是消除手工操作里的机械部分。判断力和表达是你的价值，脚本不应该碰它们。
+
+最后一篇讲发布——从库到站的最佳路径。

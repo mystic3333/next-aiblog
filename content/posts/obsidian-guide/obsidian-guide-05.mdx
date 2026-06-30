@@ -1,0 +1,180 @@
+---
+title: "从库到站：Obsidian 发布方案对比"
+description: "Obsidian Publish vs Quartz vs Digital Garden vs 手写建站，每种方案的代价和选型决策"
+date: "2026-06-30"
+tags: ["obsidian", "发布", "Quartz", "博客", "数字花园"]
+---
+
+你在 Obsidian 里积累了 500 篇笔记，结构清晰，查询顺手，唯一的问题——它们待在你的本地硬盘里，别人的浏览器看不到。
+
+发布不是刚需。但如果你有输出需求（技术博客、数字花园、团队知识库），Obsidian 的发布方案比你设想的更乱。每个方案都有代价，没有银弹。
+
+本文对比四种方案，直接说代价。
+
+## 方案一：Obsidian Publish —— 最省事，最贵
+
+官方发布服务。你在 Obsidian 里点一下 Publish，它就上线了。
+
+**价格**：$10/月（年付 $96），自定义域名额外 $20/月。一年最低 $96，最高 $336。
+
+**优点**：
+
+- 零配置。不需要服务器、域名、构建流程、CI/CD
+- 双向链接、图谱、搜索开箱即用
+- 增量发布，只发选中的笔记
+- 有密码保护（适合私有知识库）
+
+**缺点**：
+
+- 贵。对于个人博客类场景，$96/年够买域名 + VPS 还有剩
+- 定制有限。你不能改页面布局，不能加自定义组件
+- 数据不在你手里。虽然 Markdown 文件在本地，但站点数据和配置在 Obsidian 的服务器上
+- 不支持全站全文搜索（只搜你发布的笔记）
+
+**适合**：不想碰技术、愿意付费换取时间的人。快速、干净、不折腾。
+
+**不适合**：想完全控制样式和交互的人、嫌贵的个人开发者。
+
+## 方案二：Quartz —— 最灵活，代价值得
+
+Quartz 4 是目前为止最好的 Obsidian 静态站点生成器。一个开源项目，把 Obsidian 仓库编译成静态 HTML 站点。
+
+**价格**：免费。域名和托管另算（GitHub Pages 免费，Vercel 免费额度足够）。
+
+**部署流程**：
+
+```bash
+git clone https://github.com/jackyzha0/quartz.git my-blog
+cd my-blog
+# 把你的 content/ 文件夹替换为你的 Obsidian 库
+npm i
+npx quartz build --serve
+# 部署到 GitHub Pages
+npx quartz sync
+```
+
+从执行到页面在线，大约 10 分钟。
+
+**优点**：
+
+- 完全控制：HTML/CSS/JS 全部可改，从主题色到布局全部由你决定
+- 双向链接和图谱原生支持（基于 D3.js 实现）
+- 全站搜索（基于 FlexSearch，速度极快）
+- 支持 Graph View 按文件夹/标签过滤
+- 自定义域名免费
+- 构建完的静态文件你可以放在任何地方
+
+**缺点**：
+
+- 学习曲线：需要懂 Git 和基本的 npm 操作
+- 构建流程：每次修改都需要重新构建和部署（可以配 GitHub Actions 自动部署）
+- Obsidian 里的 Edge 功能不兼容：Canvas、白板、Excalidraw 需要额外插件支持
+- 发布逻辑是「全站或全不发布」，不能精确控制单篇笔记的可见性
+
+**部署自动化**：把 Obsidian 仓库和 Quartz 项目放在同一个 Git 仓库的不同子目录，用 GitHub Actions 监听 `content/` 目录的变化，自动触发构建和部署：
+
+```yaml
+name: Deploy Quartz
+on:
+  push:
+    branches: [main]
+    paths: ['content/**']
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - run: npm ci
+      - run: npx quartz build
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+```
+
+配置完后，每次在 Obsidian 里写好笔记、push 到 GitHub，站点自动更新。
+
+**适合**：开发者、愿意花一下午配置换来长期免费的人、需要完全控制发布流程的人。
+
+## 方案三：Digital Garden（Obsidian 插件）—— 折中方案
+
+一个 Obsidian 社区插件，直接把你的笔记发布到 GitHub Pages，不需要外部构建工具。
+
+**价格**：免费。只在 Obsidian 内操作。
+
+**部署流程**：安装插件 → 配置 GitHub token → 选择要发布的笔记 → 点击发布 → 插件自动推送到 GitHub Pages。
+
+**优点**：
+
+- 在 Obsidian 内完成所有操作，不需要离开编辑器
+- 可以精确控制每篇笔记的发布状态（在 frontmatter 加 `draft: true/false`）
+- 支持双链和图谱
+- 增量发布，只推变更
+- 没有额外的构建步骤，一键完成
+
+**缺点**：
+
+- 功能单一。不如 Quartz 灵活，定制空间小
+- 主题有限，改样式需要懂 CSS
+- 社区活跃度不如 Quartz，更新频率低
+- 不支持复杂查询和 Dataview
+
+**适合**：需要「一键发布非技术笔记」的内容创作者，不想碰命令行的用户。
+
+**不适合**：想要完整博客体验（标签分类、归档页面、RSS）的人。
+
+## 方案四：手写建站（Hugo / Next.js + Obsidian 内容）—— 上限最高
+
+不在 Obsidian 层面做任何发布配置。把 Obsidian 当成纯内容编辑器，用你喜欢的框架读取 Markdown 文件生成站点。
+
+**流程**：
+
+1. Obsidian 里保持写作
+2. 写完后 push 到 Git
+3. CI 触发：用脚本把 Obsidian 的 Markdown（处理 wikilink、frontmatter）转换成框架可读的格式
+4. 框架构建 → 部署
+
+**优点**：
+
+- 上限最高。你可以用任何前端框架、任何设计
+- 内容与展现完全分离，换框架只需要写新的转换脚本
+- 可以同时发布到多个平台（网站 + 邮件列表 + PDF）
+- 不依赖任何 Obsidian 特定的生态
+
+**缺点**：
+
+- 前期工作量最大。需要自己写 wikilink 到 HTML 链接的转换、图谱实现、搜索功能
+- 需要持续维护
+- 大多数情况下是过度工程
+
+**适合**：追求极致控制、已有前端基础的开发者。
+
+## 选型决策树
+
+```
+你想发布吗？
+├── 不想 → 就用 Obsidian 本地，不需要做任何事
+└── 想 →
+    ├── 愿意付钱？
+    │   ├── 是 → Obsidian Publish
+    │   └── 否 →
+    │       ├── 会 Git + npm？
+    │       │   ├── 是 → Quartz
+    │       │   └── 否 → Digital Garden
+    └── 上面都不满意？→ 手写建站（但你真的需要吗？）
+```
+
+## 我的选择
+
+Quartz。原因不是因为它「最好」，而是它的代价最合理：一下午的配置换无限的定制能力 + 零续费成本。一年省下的 $96 够买好多其他东西。
+
+但每个人对「代价」的定义不同。如果你不想在技术上花时间，Obsidian Publish 的 $8/月是用得最值的订阅之一。这没有对错。
+
+## 全系列最后的建议
+
+回头看这五篇文章，有一条线贯穿：**区分判断和操作。**
+
+链接是判断，插件是实现；体系是判断，自动化是操作；发布选型是判断，部署操作是一次性的。
+
+在 Obsidian 上花时间的地方应该永远是「想清楚怎么组织信息」，而不是「怎么配好这个工具」。工具是手段，持续的思考习惯才是目的。
